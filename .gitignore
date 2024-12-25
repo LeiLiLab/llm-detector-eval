@@ -169,3 +169,18 @@ cython_debug/
 
 # PyPI configuration file
 .pypirc
+
+*.json
+*.pt
+*.ipynb
+
+
+results/
+results_old/
+data/
+Graphs/
+generate_scripts/
+Binoculars
+results_old_old/
+
+build_data.py

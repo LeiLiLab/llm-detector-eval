@@ -1,0 +1,57 @@
+experiments:
+  - name: qa_en generate llama-3
+    type: generate
+    device: cuda
+    data: data.csv
+    task: qa
+    prompt: base # template, rewrite
+    model: llama-3
+    max_n_tokens: 512
+    max_input_tokens: 1024
+    output_file: data.csv # adds new gens to the same file, rewrites duplicates
+    start: 0
+    end: 100
+    language: en
+
+  - name: qa_en detect
+    type: detect
+    judge: radar # uses below judge config
+    task: qa_en
+    model: llama-3
+    prompt: base # template, rewrite
+    data: data.csv
+    output_file: data.csv
+
+judges:
+  radar:
+    - device: cuda
+  
+  wild:
+    - device: cuda
+
+  fastdetectgpt:
+    - model_path: "gpt-neo-2.7B"
+      device: "cuda"
+
+  phd:
+    - model_path: "roberta_base"
+      min_subsample: 40
+      dim: 2
+      intermediate_points: 7
+      alpha: 1
+      n_points: 9
+      metric: "euclidean"
+      device: "cuda"
+
+  t5sentinel:
+    - model_path: "model_weights/T5Sentinel.0613.pt"
+      device: "cuda"
+
+  logrank:
+    - model_path: "gpt2-medium"
+      device: "cuda"
+
+  binoculars:
+  - obs_model_path: "tiiuae/falcon-7b"
+    perf_model_path: "tiiuae/falcon-7b-instruct"
+    device: "cuda"
