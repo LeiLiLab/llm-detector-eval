@@ -52,6 +52,6 @@ judges:
       device: "cuda"
 
   binoculars:
-  - obs_model_path: "tiiuae/falcon-7b"
-    perf_model_path: "tiiuae/falcon-7b-instruct"
-    device: "cuda"
+    - obs_model_path: "tiiuae/falcon-7b"
+      perf_model_path: "tiiuae/falcon-7b-instruct"
+      device: "cuda"
