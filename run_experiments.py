@@ -35,7 +35,7 @@ def run_detect(config, judge_config):
             ]
         )
     print(f'Executing: {" ".join([str(item) for item in cmd])}')
-    # subprocess.run(cmd)
+    subprocess.run(cmd)
 
     return True
 
@@ -81,7 +81,7 @@ def run_generate(config):
         cmd.extend(["--language", language])
 
     print(f'Executing: {" ".join([str(item) for item in cmd])}')
-    # subprocess.run(cmd)
+    subprocess.run(cmd)
 
     return True
 

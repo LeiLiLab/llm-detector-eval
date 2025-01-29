@@ -109,7 +109,7 @@ class FastDetectGPT(JudgeBase):
         self.scoring_model.eval()
         # evaluate criterion
         self.criterion_fn = get_sampling_discrepancy_analytic
-        self.prob_estimator = ProbEstimator()
+        # self.prob_estimator = ProbEstimator()
         self.device = device
 
     def score(self, response_list):
@@ -129,8 +129,9 @@ class FastDetectGPT(JudgeBase):
                 logits_ref = logits_score
                 crit = self.criterion_fn(logits_ref, logits_score, labels)
             # estimate the probability of machine generated text
-            prob = self.prob_estimator.crit_to_prob(crit)
-            scores.append(prob)
+            # Using crit instead of probability under advisement from FastDetectGPT authors
+            # prob = self.prob_estimator.crit_to_prob(crit)
+            scores.append(crit)
         return scores
 
 
@@ -152,10 +153,13 @@ class PHDJudge(JudgeBase):
         self.model = AutoModel.from_pretrained(model_path)
         self.model = self.model.to(device)
 
-        self.phd_solver = PHD(alpha=float(alpha), metric=metric, n_points=int(n_points))
+        self.phd_solver = PHD(
+            alpha=float(alpha), metric=metric, n_points=int(n_points)
+        )
         self.MIN_SUBSAMPLE = int(min_subsample)
         self.INTERMEDIATE_POINTS = int(intermediate_points)
         self.threshold = int(dim)
+        self.device = device
 
     def preprocess_text(self, text):
         return text.replace("\n", " ").replace("  ", " ")
