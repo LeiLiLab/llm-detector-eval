@@ -20,9 +20,9 @@ def run(args):
         raise ValueError("Task does not exist.")
 
     data_to_score = full_data[
-        ((full_data["model"] == model)|(model == ""))
-        & ((full_data["prompt"] == prompt)|(prompt == ""))
-        & ((full_data["task"] == task)|(task == ""))
+        ((full_data["model"] == model) | (model == ""))
+        & ((full_data["prompt"] == prompt) | (prompt == ""))
+        & ((full_data["task"] == task) | (task == ""))
     ].copy()
 
     if args.detector_args:
@@ -35,20 +35,48 @@ def run(args):
     else:
         detector_args = {}
 
-    judge = load_judge(args.judge_model, detector_args)
+    for judge_name in args.judge_models:
+        judge = load_judge(judge_name, detector_args)
 
-    responses = data_to_score["response"].tolist()
-    judge_scores = judge.score(responses)
+        responses = data_to_score["response"].tolist()
+        judge_scores = judge.score(responses)
 
-    data_to_score[args.judge_model] = judge_scores
+        data_to_score[judge_name] = judge_scores
 
     if output_file == args.data:
         # Fit the data back into the original dataframe
-        full_data.loc[data_to_score.index, args.judge_model] = data_to_score[
-            args.judge_model
-        ]
+        for judge_name in args.judge_models:
+            full_data.loc[data_to_score.index, judge_name] = data_to_score[
+                judge_name
+            ]
         full_data.to_csv(output_file, index=False)
+    elif args.append_output and os.path.exists(output_file):
+        existing_data = pd.read_csv(output_file)
+        key_columns = ["task", "text_id", "prompt", "model"]
+
+        existing_df_indexed = existing_df.set_index(key_columns)
+        data_to_score_indexed = data_to_score.set_index(key_columns)
+
+        all_columns = existing_df_indexed.columns.union(
+            data_to_score_indexed.columns
+        )
+        existing_df_indexed = existing_df_indexed.reindex(columns=all_columns)
+        data_to_score_indexed = data_to_score_indexed.reindex(
+            columns=all_columns
+        )
+
+        existing_df_indexed.update(data_to_score_indexed)
+        new_rows = data_to_score_indexed.loc[
+            ~data_to_score_indexed.index.isin(existing_df_indexed.index)
+        ]
+
+        combined_df_indexed = pd.concat([existing_df_indexed, new_rows])
+        combined_df = combined_df_indexed.reset_index()
+
+        combined_df.to_csv(output_file, index=False)
     else:
+        if args.append_output:
+            print(f"Output file {output_file} does not exist. Creating...")
         data_to_score.to_csv(output_file, index=False)
 
 
@@ -58,19 +86,11 @@ if __name__ == "__main__":
 
     # Judge model parameters
     parser.add_argument(
-        "--judge-model",
+        "--judge-models",
         default="radar",
-        help="Name of judge model. Not currently implemented. "
-        + "Does all by default.",
-        choices=[
-            "radar",
-            "wild",
-            "fastdetectgpt",
-            "phd",
-            "t5sentinel",
-            "logrank",
-            "binoculars",
-        ],
+        help="Name of judge models",
+        nargs="+",
+        required=True,
     )
 
     parser.add_argument("--device", default="cuda", help="Device")
@@ -102,9 +122,9 @@ if __name__ == "__main__":
     )
 
     parser.add_argument(
-        "--prompt", 
-        default="", 
-        help="What prompt style is being scored. Default includes all."
+        "--prompt",
+        default="",
+        help="What prompt style is being scored. Default includes all.",
     )
     ##################################################
 
@@ -114,6 +134,12 @@ if __name__ == "__main__":
         default="",
         help="Output file for the results.",
         type=str,
+    )
+
+    parser.add_argument(
+        "--append-output",
+        action="store_true",
+        help="Append to the output file instead of overwriting.",
     )
 
     ##################################################

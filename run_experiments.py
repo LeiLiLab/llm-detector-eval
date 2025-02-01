@@ -4,12 +4,15 @@ import sys
 
 
 def run_detect(config, judge_config):
-    judge = config["judge"]
+    judges = config["judges"]
+    if not judges is list:
+        raise ValueError("Must pass a list of judges.")
     task = config["task"]
     model = config["model"]
     prompt = config["prompt"]
     data = config["data"]
     output_file = config.get("output_file", None)
+    append_output = config["append_output"]
 
     cmd = [
         "python",
@@ -23,7 +26,7 @@ def run_detect(config, judge_config):
         "--prompt",
         prompt,
         "--judge",
-        judge,
+        " ".join(judges),
     ]
     if output_file:
         cmd.extend(["--output-file", output_file])
@@ -34,6 +37,8 @@ def run_detect(config, judge_config):
                 " ".join([f"{k}:{v}" for k, v in judge_config[0].items()]),
             ]
         )
+    if append_output:
+        cmd.extend(["--append-output"])
     print(f'Executing: {" ".join([str(item) for item in cmd])}')
     subprocess.run(cmd)
 

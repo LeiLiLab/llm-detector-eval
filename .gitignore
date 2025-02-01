@@ -185,3 +185,4 @@ results_old_old/
 
 build_data.py
 *.yaml
+*.csv
