@@ -3,7 +3,7 @@
 # This source code is licensed under the MIT license found in the
 # LICENSE file in the root directory of this source tree.
 
-from transformers import AutoModelForCausalLM, AutoTokenizer
+from transformers import AutoModelForCausalLM, AutoTokenizer, AutoModel
 import torch
 import time
 import os
@@ -26,13 +26,13 @@ model_fullnames = {  'gpt2': 'gpt2',
                      'llama2-13b': 'TheBloke/Llama-2-13B-fp16',
                      'bloom-7b1': 'bigscience/bloom-7b1',
                      'opt-13b': 'facebook/opt-13b',
-                     'roberta-base': 'FacebookAI/roberta-base',
+                     'roberta-base': 'roberta-base',
                      'gpt2-medium': 'openai-community/gpt2-medium',
                      'tiiuae/falcon-7b': 'tiiuae/falcon-7b',
                      'tiiuae/falcon-7b-instruct': 'tiiuae/falcon-7b-instruct',
                      'xlm-roberta-base': 'FacebookAI/xlm-roberta-base'
                      }
-float16_models = ['gpt-j-6B', 'gpt-neox-20b', 'llama-13b', 'llama2-13b', 'bloom-7b1', 'opt-13b', 'tiiuae/falcon-7b']
+float16_models = ['gpt-j-6B', 'gpt-neox-20b', 'llama-13b', 'llama2-13b', 'bloom-7b1', 'opt-13b', 'tiiuae/falcon-7b', 'gpt2-medium', 'robert-base']
 
 def get_model_fullname(model_name):
     return model_fullnames[model_name] if model_name in model_fullnames else model_name

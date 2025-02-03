@@ -1,46 +1,50 @@
 import yaml
 import subprocess
 import sys
+import torch
 
-
-def run_detect(config, judge_config):
+def run_detect(config, all_judge_configs):
     judges = config["judges"]
-    if not judges is list:
+    if not type(judges) is list:
         raise ValueError("Must pass a list of judges.")
     task = config["task"]
     model = config["model"]
-    prompt = config["prompt"]
+    prompt = config.get("prompt", None)
     data = config["data"]
     output_file = config.get("output_file", None)
-    append_output = config["append_output"]
+    append_output = config.get("append_output", None)
 
-    cmd = [
-        "python",
-        "detect.py",
-        "--data",
-        data,
-        "--task",
-        task,
-        "--model",
-        model,
-        "--prompt",
-        prompt,
-        "--judge",
-        " ".join(judges),
-    ]
-    if output_file:
-        cmd.extend(["--output-file", output_file])
-    if judge_config:
-        cmd.extend(
-            [
-                "--detector-args",
-                " ".join([f"{k}:{v}" for k, v in judge_config[0].items()]),
-            ]
-        )
-    if append_output:
-        cmd.extend(["--append-output"])
-    print(f'Executing: {" ".join([str(item) for item in cmd])}')
-    subprocess.run(cmd)
+    for judge_name in judges:
+        judge_config = all_judge_configs.get(judge_name, None)
+        cmd = [
+            "python",
+            "detect.py",
+            "--data",
+            data,
+            "--task",
+            task,
+            "--model",
+            model,
+            "--judge-model",
+            judge_name,
+        ]
+        if prompt:
+            cmd.extend(["--prompt", prompt])
+        if output_file:
+            cmd.extend(["--output-file", output_file])
+        if judge_config:
+            cmd.extend(
+                [
+                    "--detector-args",
+                    " ".join([f"{k}:{v}" for k, v in judge_config[0].items()]),
+                ]
+            )
+        if append_output:
+            cmd.extend(["--append-output"])
+        print(f'Executing: {" ".join([str(item) for item in cmd])}')
+        subprocess.run(cmd)
+        if torch.cuda.is_available():
+            torch.cuda.empty_cache()
 
     return True
 
@@ -107,8 +111,7 @@ def main():
         if exp_type == "generate":
             run_generate(experiment)
         elif exp_type == "detect":
-            judge_name = experiment["judge"]
-            run_detect(experiment, config["judges"].get(judge_name, None))
+            run_detect(experiment, config["judges"])
         else:
             raise ValueError("Experiment Type doesn't exist.")
 

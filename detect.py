@@ -35,23 +35,21 @@ def run(args):
     else:
         detector_args = {}
 
-    for judge_name in args.judge_models:
-        judge = load_judge(judge_name, detector_args)
+    judge = load_judge(args.judge_model, detector_args)
 
-        responses = data_to_score["response"].tolist()
-        judge_scores = judge.score(responses)
+    responses = data_to_score["response"].tolist()
+    judge_scores = judge.score(responses)
 
-        data_to_score[judge_name] = judge_scores
+    data_to_score[args.judge_model] = judge_scores
 
     if output_file == args.data:
         # Fit the data back into the original dataframe
-        for judge_name in args.judge_models:
-            full_data.loc[data_to_score.index, judge_name] = data_to_score[
-                judge_name
-            ]
+        full_data.loc[data_to_score.index, args.judge_model] = data_to_score[
+            args.judge_model
+        ]
         full_data.to_csv(output_file, index=False)
     elif args.append_output and os.path.exists(output_file):
-        existing_data = pd.read_csv(output_file)
+        existing_df = pd.read_csv(output_file)
         key_columns = ["task", "text_id", "prompt", "model"]
 
         existing_df_indexed = existing_df.set_index(key_columns)
@@ -86,10 +84,8 @@ if __name__ == "__main__":
 
     # Judge model parameters
     parser.add_argument(
-        "--judge-models",
-        default="radar",
+        "--judge-model",
         help="Name of judge models",
-        nargs="+",
         required=True,
     )
 
