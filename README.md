@@ -5,6 +5,7 @@ Code for [A Practical Examination of AI-Generated Text Detectors for Large Langu
 
 # Citation
 If you find this work helpful, please consider citing our paper:
+```
 @article{tufts2025practicalexaminationaigeneratedtext,
       title={A Practical Examination of AI-Generated Text Detectors for Large Language Models}, 
       author={Brian Tufts and Xuandong Zhao and Lei Li},
@@ -12,3 +13,4 @@ If you find this work helpful, please consider citing our paper:
       journal={arXiv preprint:2412.05139}
       url={https://arxiv.org/abs/2412.05139}, 
 }
+```
