@@ -109,7 +109,7 @@ class FastDetectGPT(JudgeBase):
         self.scoring_model.eval()
         # evaluate criterion
         self.criterion_fn = get_sampling_discrepancy_analytic
-        self.prob_estimator = ProbEstimator()
+        # self.prob_estimator = ProbEstimator()
         self.device = device
 
     def score(self, response_list):
@@ -120,7 +120,7 @@ class FastDetectGPT(JudgeBase):
                 return_tensors="pt",
                 padding=True,
                 truncation=True,
-                max_length=2048,
+                max_length=min(2048, self.scoring_model.config.max_position_embeddings),
                 return_token_type_ids=False,
             ).to(self.device)
             labels = tokenized.input_ids[:, 1:]
@@ -129,15 +129,16 @@ class FastDetectGPT(JudgeBase):
                 logits_ref = logits_score
                 crit = self.criterion_fn(logits_ref, logits_score, labels)
             # estimate the probability of machine generated text
-            prob = self.prob_estimator.crit_to_prob(crit)
-            scores.append(prob)
+            # Using crit instead of probability under advisement from FastDetectGPT authors
+            # prob = self.prob_estimator.crit_to_prob(crit)
+            scores.append(crit)
         return scores
 
 
 class PHDJudge(JudgeBase):
     def __init__(
         self,
-        model_path="roberta_base",
+        model_path="roberta-base",
         min_subsample=40,
         dim=2,
         intermediate_points=7,
@@ -147,15 +148,18 @@ class PHDJudge(JudgeBase):
         device="cuda",
     ):
         super(PHDJudge, self).__init__(judge_name="phd")
-
+        model_path = get_full_model_name(model_path)
         self.tokenizer = AutoTokenizer.from_pretrained(model_path)
-        self.model = AutoModel.from_pretrained(model_path)
-        self.model = self.model.to(device)
+        self.model = AutoModel.from_pretrained(model_path, torch_dtype=torch.float16)
+        self.model.to(device)
 
-        self.phd_solver = PHD(alpha=float(alpha), metric=metric, n_points=int(n_points))
+        self.phd_solver = PHD(
+            alpha=float(alpha), metric=metric, n_points=int(n_points)
+        )
         self.MIN_SUBSAMPLE = int(min_subsample)
         self.INTERMEDIATE_POINTS = int(intermediate_points)
         self.threshold = int(dim)
+        self.device = device
 
     def preprocess_text(self, text):
         return text.replace("\n", " ").replace("  ", " ")
@@ -164,7 +168,7 @@ class PHDJudge(JudgeBase):
         inputs = self.tokenizer(
             self.preprocess_text(text),
             truncation=True,
-            max_length=512,
+            max_length=min(512, self.model.config.max_position_embeddings),
             return_tensors="pt",
         ).to(self.device)
         with torch.no_grad():
@@ -192,6 +196,7 @@ class PHDJudge(JudgeBase):
                 dim = self.get_phd_single(response)
                 results.append(dim)
             except:  # TODO: Specify Error type
+                print("error")
                 results.append(-1)
 
         return results
@@ -249,6 +254,7 @@ class T5Sentinel(JudgeBase):
 class LogRank(JudgeBase):
     def __init__(self, model_path="gpt2-medium", device="cuda"):
         self.device = device
+        model_path = get_full_model_name(model_path)
         self.base_model = AutoModelForCausalLM.from_pretrained(
             model_path, torch_dtype=torch.bfloat16
         ).to(self.device)
@@ -260,7 +266,9 @@ class LogRank(JudgeBase):
         for text in tqdm(response_list, desc="LogRank evaluating"):
             with torch.no_grad():
                 tokenized = self.base_tokenizer(
-                    text, return_tensors="pt", max_length=1024, truncation=True
+                    text, return_tensors="pt", 
+                    max_length=min(1024, self.base_model.config.max_position_embeddings), 
+                    truncation=True
                 ).to(self.device)
                 logits = self.base_model(**tokenized).logits[:, :-1]
                 labels = tokenized.input_ids[:, 1:]
@@ -301,6 +309,9 @@ class Binoculars(JudgeBase):
         device="cuda",
     ):
         from binoculars import Binoculars as Bin
+
+        obs_model_path = get_full_model_name(obs_model_path)
+        perf_model_path = get_full_model_name(perf_model_path)
 
         self.device = device
         self.bino = Bin(

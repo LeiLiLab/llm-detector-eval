@@ -15,12 +15,13 @@ experiments:
 
   - name: qa_en detect
     type: detect
-    judge: radar # uses below judge config
+    judges: [radar] # list of judges, uses below judge config
     task: qa_en
     model: llama-3
     prompt: base # template, rewrite
     data: data.csv
     output_file: data.csv
+    append_output: True # True: appends to existing file, False: overwrites
 
 judges:
   radar:
@@ -52,6 +53,6 @@ judges:
       device: "cuda"
 
   binoculars:
-  - obs_model_path: "tiiuae/falcon-7b"
-    perf_model_path: "tiiuae/falcon-7b-instruct"
-    device: "cuda"
+    - obs_model_path: "tiiuae/falcon-7b"
+      perf_model_path: "tiiuae/falcon-7b-instruct"
+      device: "cuda"
