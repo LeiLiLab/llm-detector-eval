@@ -30,7 +30,7 @@ def run(args):
         formatting_request = "You are a helpful code assistant that can teach a junior developer how to code. Your language of choice is Python. Don't explain the code, just generate the code block itself."
         post_text = "Provide code to solve the above problem: "
     elif "qa" in args.task:
-        formatting_request = f"You are a helfpul question answering assistant that will answer a single quesetion as completely as possible given the information in the question. Do NOT using any markdown, bullet, or numbered list formatting. The assistant will use ONLY paragraph formatting. **Respond only in {language}**\nResponse:"
+        formatting_request = f"You are a helpful question answering assistant that will answer a single question as completely as possible given the information in the question. Do NOT use any markdown, bullet, or numbered list formatting. The assistant will use ONLY paragraph formatting. **Respond only in {language}**"
         post_text = f"**Respond ONLY in {language} and no other languages**.\nResponse: "
     elif "summ" in args.task:
         formatting_request = f"You are a helfpul summarization assistant that will summarize a given article. Provide only the summarization in paragraph formatting. Do not introduce the summary. **Respond in {language}**"
@@ -47,7 +47,7 @@ def run(args):
     elif args.task == "abstract":
         formatting_request = "You are a helpful abstract writing assistant. You will write an abstract given the content of a paper. Do not provide any other text. You will only provide an abstract."
         post_text = "Provide an abstract of the above paper: "
-    
+
     if args.prompt == "rewrite":
         formatting_request = "You are a helpful writing assistant. Rewrite the following text to improve clarity and professionalism. Do not provide any other text. Only provide the rewritten text."
         post_text = f"Provide the rewritten text in {language}: "
@@ -148,8 +148,6 @@ def run(args):
             ]
         full_prompts.append(chat)
 
-    len(full_prompts)
-
     # Get all of the outputs
     outputs_list = []
     chunks = [full_prompts[x : x + 5] for x in range(0, len(full_prompts), 5)]
@@ -161,7 +159,7 @@ def run(args):
                 max_input_tokens=args.max_input_tokens,
                 temperature=TEMP,
                 end_text=post_text,
-                top_p=TOP_P
+                top_p=TOP_P,
             )
         )
 
@@ -211,6 +209,8 @@ if __name__ == "__main__":
             "gpt-4-turbo",
             "gpt-4o",
             "gpt-4o-mini",
+            "deepseek-reasoner",
+            "deepseek-chat",
         ],
     )
     parser.add_argument(
@@ -279,11 +279,7 @@ if __name__ == "__main__":
         "--prompt",
         default="base",
         help="What style of prompting to use.",
-        choices=[
-            "base",
-            "template",
-            "rewrite"
-        ]
+        choices=["base", "template", "rewrite"],
     )
     parser.add_argument(
         "--language",

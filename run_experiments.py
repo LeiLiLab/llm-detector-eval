@@ -3,6 +3,7 @@ import subprocess
 import sys
 import torch
 
+
 def run_detect(config, all_judge_configs):
     judges = config["judges"]
     if not type(judges) is list:
@@ -51,7 +52,7 @@ def run_detect(config, all_judge_configs):
 
 def run_generate(config):
     data = config["data"]
-    task = config["task"]
+    tasks = config["tasks"]
     prompt = config["prompt"]
     model = config["model"]
     device = config.get("device", None)
@@ -62,35 +63,37 @@ def run_generate(config):
     end = config.get("end", None)
     language = config.get("language", None)
 
-    cmd = [
-        "python",
-        "generate.py",
-        "--data",
-        data,
-        "--task",
-        task,
-        "--model",
-        model,
-        "--prompt",
-        prompt,
-    ]
-    if device:
-        cmd.extend(["--device", device])
-    if max_n_tokens:
-        cmd.extend(["--max-n-tokens", max_n_tokens])
-    if max_input_tokens:
-        cmd.extend(["--max-input-tokens", max_input_tokens])
-    if output_file:
-        cmd.extend(["--output-file", output_file])
-    if start:
-        cmd.extend(["--start", start])
-    if end:
-        cmd.extend(["--end", end])
-    if start:
-        cmd.extend(["--language", language])
+    for task in tasks:
+        cmd = [
+            "python",
+            "generate.py",
+            "--data",
+            data,
+            "--task",
+            task,
+            "--model",
+            model,
+            "--prompt",
+            prompt,
+        ]
+        if device:
+            cmd.extend(["--device", device])
+        if max_n_tokens:
+            cmd.extend(["--max-n-tokens", max_n_tokens])
+        if max_input_tokens:
+            cmd.extend(["--max-input-tokens", max_input_tokens])
+        if output_file:
+            cmd.extend(["--output-file", output_file])
+        if start:
+            cmd.extend(["--start", start])
+        if end:
+            cmd.extend(["--end", end])
+        if language:
+            cmd.extend(["--language", language])
 
-    print(f'Executing: {" ".join([str(item) for item in cmd])}')
-    subprocess.run(cmd)
+        print(f'Executing: {" ".join([str(item) for item in cmd])}')
+        cmd = [str(item) for item in cmd]
+        subprocess.run(cmd)
 
     return True
 
