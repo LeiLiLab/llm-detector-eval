@@ -171,6 +171,8 @@ if __name__ == "__main__":
             "gpt-4-turbo",
             "gpt-4o",
             "gpt-4o-mini",
+            "deepseek-reasoner",
+            "deepseek-chat",
         ],
     )
     parser.add_argument(
@@ -239,11 +241,7 @@ if __name__ == "__main__":
         "--prompt",
         default="base",
         help="What style of prompting to use.",
-        choices=[
-            "base",
-            "template",
-            "rewrite"
-        ]
+        choices=["base", "template", "rewrite"],
     )
     parser.add_argument(
         "--language",

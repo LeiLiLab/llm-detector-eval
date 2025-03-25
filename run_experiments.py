@@ -3,6 +3,7 @@ import subprocess
 import sys
 import torch
 
+
 def run_detect(config, all_judge_configs):
     judges = config["judges"]
     if not type(judges) is list:
@@ -87,10 +88,11 @@ def run_generate(config):
             cmd.extend(["--start", start])
         if end:
             cmd.extend(["--end", end])
-        if start:
+        if language:
             cmd.extend(["--language", language])
 
         print(f'Executing: {" ".join([str(item) for item in cmd])}')
+        cmd = [str(item) for item in cmd]
         subprocess.run(cmd)
 
     return True

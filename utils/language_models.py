@@ -3,6 +3,7 @@ import os
 import time
 import torch
 import gc
+import json
 from typing import Dict, List
 import tiktoken
 from transformers import (
@@ -153,8 +154,8 @@ class HuggingFace(LanguageModel):
                 eos_token_id=self.eos_token_ids,
                 top_p=top_p,
                 pad_token_id=self.tokenizer.pad_token_id,
-                temperature=None
-                )
+                temperature=None,
+            )
 
         # If the model is not an encoder-decoder type, slice off the input
         # tokens.
@@ -187,15 +188,21 @@ class GPT(LanguageModel):
     API_ERROR_OUTPUT = "$ERROR$"
     API_QUERY_SLEEP = 0.5
     API_MAX_RETRY = 5
-    API_TIMEOUT = 20
-    openai.api_key = os.getenv("OPENAI_API_KEY")
+    API_TIMEOUT = 600
 
-    def __init__(self, model_name):
-        self.client = openai.OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+    def __init__(
+        self,
+        model_name,
+        base_url="https://api.openai.com/v1/",
+        api_key=os.getenv("OPENAI_API_KEY"),
+    ):
+        self.client = openai.OpenAI(
+            api_key=api_key, base_url=base_url, timeout=self.API_TIMEOUT
+        )
         self.model_name = model_name
 
     def truncate_user_message(self, message, max_tokens, suffix="..."):
-        enc = tiktoken.get_encoding("o200k_base")
+        enc = tiktoken.get_encoding("cl100k_base")
 
         tokens = enc.encode(message)
 
@@ -243,8 +250,9 @@ class GPT(LanguageModel):
                 )
                 output = response.choices[0].message.content
                 break
+            except json.decoder.JSONDecodeError as e:
+                time.sleep(self.API_RETRY_SLEEP)
             except response.error.OpenAIError as e:
-                print(type(e), e)
                 time.sleep(self.API_RETRY_SLEEP)
 
             time.sleep(self.API_QUERY_SLEEP)
@@ -278,6 +286,12 @@ def load_indiv_model(model_name):
     model_path = get_model_path(model_name)
     if "gpt" in model_name:
         lm = GPT(model_name)
+    elif "deepseek" in model_name:
+        lm = GPT(
+            model_name,
+            base_url="https://api.deepseek.com/v1/",
+            api_key=os.getenv("DEEPSEEK_API_KEY"),
+        )
     else:
         if model_name in ["mixtral", "llama-3-large"]:
             bnb_config = BitsAndBytesConfig(
@@ -326,6 +340,8 @@ def get_model_path(model_name):
         "gpt-4o": "gpt-4o",
         "gpt-4o-mini": "gpt-4o-mini",
         "gpt-3.5-turbo": "gpt-3.5-turbo",
+        "deepseek-reasoner": "deepseek-reasoner",
+        "deepseek-chat": "deepseek-chat",
         "vicuna": VICUNA_PATH,
         "llama-2": LLAMA_PATH,
         "llama-2-small": LLAMA_SMALL_PATH,

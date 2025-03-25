@@ -187,3 +187,4 @@ build_data.py
 *.yaml
 *.csv
 *.sh
+*.parquet
