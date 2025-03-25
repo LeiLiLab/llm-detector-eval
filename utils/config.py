@@ -8,7 +8,9 @@ LLAMA_THREE_PATH = "meta-llama/Meta-Llama-3-8B-Instruct"
 LLAMA_THREE_LARGE_PATH = "meta-llama/Meta-Llama-3-70B-Instruct"
 LLAMA_LARGE_PATH = "meta-llama/Llama-2-70b-chat-hf"
 
-TEMP = 0
-TOP_P = 1
+TEMP = 1
+TOP_P = 0.95
+TOP_K = 50
+MIN_LENGTH = 100
 
 __version__ = "0.0.1"

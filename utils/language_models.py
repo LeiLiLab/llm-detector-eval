@@ -48,45 +48,76 @@ class HuggingFace(LanguageModel):
             self.tokenizer.convert_tokens_to_ids("<|eot_id|>"),
         ]
 
+    def add_end_text(self, input_text, system_tokens, seed_text, end_tokens, max_tokens):
+        # Tokenize the end_text and input_text
+        input_tokens = self.tokenizer.apply_chat_template(
+                input_text[1:],
+                return_tensors="pt",
+                truncation=True,
+                padding=False,
+                return_dict=False,
+                max_length=max_tokens,
+                add_generation_prompt=True
+            )
+
+        # Calculate the maximum allowed tokens for input_text
+        allowed_tokens_for_input = max_tokens - ((len(end_tokens)+5) + (len(system_tokens)+5))
+
+        input_tokens = input_tokens[0][:allowed_tokens_for_input]
+        input_text[1]["content"] = self.tokenizer.decode(
+                                token_ids=input_tokens, 
+                                skip_special_tokens=True)
+        if seed_text:
+            input_text.append({"role": "assistant", "content": seed_text})
+        return input_text
+
+
     def batched_generate(
         self,
         full_prompts_list,
         max_n_tokens: int,
         max_input_tokens: int,
-        end_text: str,
+        seed_text: str,
         temperature: float,
         top_p: float = 1.0,
+        top_k: int = 50,
+        min_length: int = 100
     ):
         max_input_tokens = min(
             self.model.config.max_position_embeddings, max_input_tokens
         )
 
+        # Llama-3 will sometimes just print <eot_id> when seeded text.
+        if "llama" in self.model_name:
+            seed_text = ""
+
         # Tokenize the end_text to determine its token count
         end_text_tokens = self.tokenizer.encode(
-            end_text, add_special_tokens=False
+            seed_text, add_special_tokens=False
         )
-        end_text_token_count = len(end_text_tokens)
+        system_tokens = self.tokenizer.encode(
+            full_prompts_list[0][0]["content"], add_special_tokens=False
+        )
+        full_prompts_list = [
+            self.add_end_text(
+                prompt,
+                system_tokens,
+                seed_text,
+                end_text_tokens,
+                max_tokens=max_input_tokens
+            ) for prompt in full_prompts_list
+        ]
 
-        # TODO: Adjust full_prompts_list to ensure that end_text can fit within the
-        # token limit
-        # truncated_prompts = []
-        # for prompt in full_prompts_list:
-        #     prompt_tokens = self.tokenizer.encode(
-        #         prompt, add_special_tokens=False
-        #     )
-
-        #     # Truncate the prompt if necessary to make room for end_text tokens
-        #     if len(prompt_tokens) + end_text_token_count > max_input_tokens:
-        #         prompt_tokens = prompt_tokens[
-        #             : max_input_tokens - end_text_token_count
-        #         ]
-
-        #     # Combine the truncated prompt with the end_text
-        #     truncated_prompt = self.tokenizer.decode(
-        #         prompt_tokens, skip_special_tokens=True
-        #     )
-        #     full_prompt = truncated_prompt + end_text
-        #     truncated_prompts.append(full_prompt)
+        inputs_text = self.tokenizer.apply_chat_template(
+            full_prompts_list,
+            tokenize=False,
+            truncation=True,
+            padding=True,
+            max_length=max_input_tokens,
+            padding_side='left',
+            add_generation_prompt=not bool(seed_text),
+            continue_final_message=bool(seed_text)
+        )
 
         inputs = self.tokenizer.apply_chat_template(
             full_prompts_list,
@@ -95,7 +126,11 @@ class HuggingFace(LanguageModel):
             padding=True,
             max_length=max_input_tokens,
             return_dict=True,
+            padding_side='left',
+            add_generation_prompt=not bool(seed_text),
+            continue_final_message=bool(seed_text)
         )
+
         inputs.to(self.model.device)
 
         # Batch generation
@@ -108,6 +143,8 @@ class HuggingFace(LanguageModel):
                 eos_token_id=self.eos_token_ids,
                 pad_token_id=self.tokenizer.pad_token_id,
                 top_p=top_p,
+                top_k=top_k,
+                min_length=min_length
             )
         else:
             output_ids = self.model.generate(
@@ -122,12 +159,15 @@ class HuggingFace(LanguageModel):
 
         # If the model is not an encoder-decoder type, slice off the input
         # tokens.
+        og_outputs_list = self.tokenizer.batch_decode(
+            output_ids, skip_special_tokens=False
+        )
         if not self.model.config.is_encoder_decoder:
             original_lengths = [
                 len(input_ids) for input_ids in inputs["input_ids"]
             ]
             output_ids = [
-                output[input_len + 2 :]
+                output[input_len:]
                 for output, input_len in zip(output_ids, original_lengths)
             ]
 
@@ -181,8 +221,8 @@ class GPT(LanguageModel):
         max_n_tokens: int,
         temperature: float,
         top_p: float,
-        end_text: str,
-        max_input_tokens: int,
+        seed_text: str,
+        max_input_tokens: int
     ):
         """
         Args:
@@ -195,7 +235,7 @@ class GPT(LanguageModel):
         """
 
         conv[1]["content"] = self.truncate_user_message(
-            conv[1]["content"], max_input_tokens, suffix=end_text
+            conv[1]["content"], max_input_tokens, suffix=seed_text
         )
 
         output = self.API_ERROR_OUTPUT
@@ -206,9 +246,7 @@ class GPT(LanguageModel):
                     messages=conv,
                     max_tokens=max_n_tokens,
                     temperature=temperature,
-                    top_p=top_p,
-                    stream=False,
-                    timeout=self.API_TIMEOUT,
+                    top_p=top_p
                 )
                 output = response.choices[0].message.content
                 break
@@ -226,8 +264,10 @@ class GPT(LanguageModel):
         max_n_tokens: int,
         max_input_tokens: int,
         temperature: float,
-        end_text: str,
+        seed_text: str,
         top_p: float = 1.0,
+        top_k: int = 50,
+        min_length: int = 100
     ):
         return [
             self.generate(
@@ -235,8 +275,8 @@ class GPT(LanguageModel):
                 max_n_tokens,
                 temperature,
                 top_p,
-                end_text,
-                max_input_tokens,
+                seed_text,
+                max_input_tokens
             )
             for conv in convs_list
         ]
@@ -281,11 +321,11 @@ def load_indiv_model(model_name):
         tokenizer = AutoTokenizer.from_pretrained(
             model_path,
             token=os.getenv("HUGGING_FACE_TOKEN"),
-            use_fast=use_fast,
+            use_fast=use_fast, 
+            padding_side='left'
         )
 
-        tokenizer.padding_side = "left"
-        tokenizer.pad_token = tokenizer.eos_token
+        tokenizer.pad_token = tokenizer.bos_token
 
         lm = HuggingFace(model_name, model, tokenizer)
 
