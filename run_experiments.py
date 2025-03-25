@@ -7,8 +7,8 @@ def run_detect(config, all_judge_configs):
     judges = config["judges"]
     if not type(judges) is list:
         raise ValueError("Must pass a list of judges.")
-    task = config["task"]
-    model = config["model"]
+    task = config.get("task", None)
+    model = config.get("model", None)
     prompt = config.get("prompt", None)
     data = config["data"]
     output_file = config.get("output_file", None)
@@ -21,13 +21,13 @@ def run_detect(config, all_judge_configs):
             "detect.py",
             "--data",
             data,
-            "--task",
-            task,
-            "--model",
-            model,
             "--judge-model",
             judge_name,
         ]
+        if model:
+            cmd.extend(["--model", model])
+        if task:
+            cmd.extend(["--task", task])
         if prompt:
             cmd.extend(["--prompt", prompt])
         if output_file:

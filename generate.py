@@ -127,7 +127,7 @@ def run(args):
             }
         )
 
-    key_columns = ["task", "text_id", "prompt", "model"]
+    key_columns = ["task", "text_id", "model"]
     new_df = pd.DataFrame(new_rows)
     if args.output_file:
         new_df = pd.concat([new_df, data]).drop_duplicates(
@@ -146,7 +146,6 @@ def run(args):
             subset=key_columns, keep="first"
         )
         merged_df.to_csv(args.data, index=False)
-
 
 if __name__ == "__main__":
 
